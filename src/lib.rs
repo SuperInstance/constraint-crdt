@@ -40,6 +40,7 @@ pub mod bloom;
 pub mod geometric;
 pub mod decay;
 pub mod sketch;
+pub mod ttl_crdt;
 #[cfg(feature = "plato")]
 pub mod plato;
 
@@ -47,6 +48,7 @@ pub use bloom::BloomCRDT;
 pub use geometric::{GeometricNode, GossipExperiment as GeometricExperiment};
 pub use decay::{DecayCounter, DecayConstraintState};
 pub use sketch::SketchCRDT;
+pub use ttl_crdt::{TtlCrdtNode, TtlCrdtConstraint, TtlState, TtlType, EmergenceEvent};
 
 pub use merge::Merge;
 pub use state::ConstraintState;
