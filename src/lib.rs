@@ -36,8 +36,17 @@ pub mod delta;
 pub mod merkle;
 pub mod gossip;
 pub mod simulation;
+pub mod bloom;
+pub mod geometric;
+pub mod decay;
+pub mod sketch;
 #[cfg(feature = "plato")]
 pub mod plato;
+
+pub use bloom::BloomCRDT;
+pub use geometric::{GeometricNode, GossipExperiment as GeometricExperiment};
+pub use decay::{DecayCounter, DecayConstraintState};
+pub use sketch::SketchCRDT;
 
 pub use merge::Merge;
 pub use state::ConstraintState;
