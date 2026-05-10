@@ -3,7 +3,7 @@
 //! Inspect, merge, and simulate CRDT constraint states from the command line.
 
 use constraint_crdt::*;
-use std::io;
+
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
