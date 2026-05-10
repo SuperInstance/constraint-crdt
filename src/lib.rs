@@ -2,36 +2,27 @@
 //!
 //! CRDT-backed constraint states for distributed fleet consensus.
 //!
-//! Extracts the CRDT merge protocol from SmartCRDT and fuses it with
-//! constraint theory semantics. Every constraint state is a CRDT that
-//! merges without coordination — the mathematical foundation for
-//! holonomy-consensus across fleet nodes.
-//!
 //! ## Core insight
 //!
 //! CRDTs satisfy three algebraic laws (commutative, associative, idempotent).
 //! Constraint satisfaction requires closure under lattice operations.
 //! These are THE SAME algebraic structure — a semilattice.
 //!
-//! ## What you get
+//! ## Modules
 //!
-//! - `Merge` — the semilattice join trait
-//! - `ConstraintState` — composite CRDT combining all sub-CRDTs
-//! - `ConstraintGCounter` — distributed satisfaction counting
-//! - `PNCounter` — positive/negative counting (decrement support)
-//! - `ConstraintORSet` — add-wins constraint tracking with tombstone GC
-//! - `EisensteinRegister` — lattice positions as LWW registers
-//! - `FleetTile` — PLATO tiles as mergeable CRDTs
-//! - `VectorClock` — causal ordering across nodes
-//! - `DeltaTracker` / `ConstraintDelta` — send only changes, not full state
-//! - `PlatoClient` — HTTP client for PLATO tile server
-//!
-//! ## Algebraic laws verified
-//!
-//! Every CRDT type is tested for:
-//! - **Commutativity**: `a ∘ b == b ∘ a`
-//! - **Associativity**: `(a ∘ b) ∘ c == a ∘ (b ∘ c)`
-//! - **Idempotence**: `a ∘ a == a`
+//! - `merge` — The semilattice join trait (C/A/I laws)
+//! - `state` — Composite CRDT: all sub-CRDTs in one mergeable unit
+//! - `counter` — G-Counter: distributed satisfaction counting
+//! - `pncounter` — PN-Counter: positive/negative counting
+//! - `orset` — OR-Set: add-wins constraint tracking
+//! - `eisenstein` — Lattice positions as LWW registers (lower norm wins)
+//! - `tile` — PLATO tiles as mergeable CRDTs
+//! - `vclock` — Vector clocks for causal ordering
+//! - `delta` — Delta-state CRDTs (send only changes)
+//! - `merkle` — State hashes for efficient sync detection
+//! - `gossip` — Anti-entropy gossip protocol
+//! - `simulation` — Deterministic network simulation
+//! - `plato` — HTTP client for PLATO server (feature-gated)
 
 pub mod merge;
 pub mod state;
@@ -42,6 +33,9 @@ pub mod eisenstein;
 pub mod tile;
 pub mod vclock;
 pub mod delta;
+pub mod merkle;
+pub mod gossip;
+pub mod simulation;
 #[cfg(feature = "plato")]
 pub mod plato;
 
@@ -54,5 +48,8 @@ pub use eisenstein::EisensteinRegister;
 pub use tile::FleetTile;
 pub use vclock::VectorClock;
 pub use delta::{ConstraintDelta, DeltaTracker};
+pub use merkle::StateHash;
+pub use gossip::{GossipNode, GossipMessage, exchange as gossip_exchange};
+pub use simulation::Simulation;
 #[cfg(feature = "plato")]
 pub use plato::PlatoClient;

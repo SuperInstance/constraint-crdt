@@ -1,6 +1,6 @@
 [package]
 name = "constraint-crdt"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 description = "CRDT-backed constraint states for distributed fleet consensus"
 license = "MIT"

@@ -15,20 +15,23 @@ This crate extracts the CRDT merge protocol from [SmartCRDT](https://github.com/
 | Type | Description |
 |------|-------------|
 | `Merge` trait | Semilattice join (C/A/I laws verified) |
-| `ConstraintGCounter` | Distributed satisfaction counting (per-node max merge) |
-| `PNCounter` | Positive/negative counting (increment + decrement) |
+| `ConstraintGCounter` | Distributed satisfaction counting |
+| `PNCounter` | Positive/negative counting |
 | `ConstraintORSet` | Add-wins constraint tracking with tombstone GC |
 | `EisensteinRegister` | Lattice positions as LWW registers (lower norm wins) |
 | `FleetTile` | PLATO tiles as mergeable CRDTs with content integrity |
 | `ConstraintState` | Composite: all sub-CRDTs in one mergeable unit |
-| `VectorClock` | Causal ordering across fleet nodes |
+| `VectorClock` | Causal ordering (happened-before, concurrent detection) |
 | `DeltaTracker` | Send only changes, not full state |
+| `StateHash` | Merkle-style state hashes for efficient sync detection |
+| `GossipNode` | Anti-entropy gossip protocol state machine |
+| `Simulation` | Deterministic network simulation (loss, latency, partitions) |
 | `PlatoClient` | HTTP client for PLATO tile server (`plato` feature) |
 
 ## Usage
 
 ```rust
-use constraint_crdt::{ConstraintState, Merge, VectorClock};
+use constraint_crdt::*;
 
 // Two fleet nodes, independent
 let mut node_a = ConstraintState::new("forgemaster");
@@ -40,49 +43,51 @@ node_b.add_constraint("holonomy");
 node_b.record_satisfied(2000);
 
 // Merge without coordination — always consistent
-let mut merged = node_a.merged(&node_b);
+let merged = node_a.merged(&node_b);
 assert_eq!(merged.metrics.total_satisfied(), 3000);
 
-// Vector clocks for causal ordering
-let mut vc_a = VectorClock::new();
-vc_a.increment("forgemaster");
-let mut vc_b = vc_a.clone();
-vc_b.increment("oracle1");
-assert!(vc_a.happened_before_or_equal(&vc_b));
+// Gossip protocol for automatic convergence
+let mut a = GossipNode::new("forgemaster");
+let mut b = GossipNode::new("oracle1");
+a.add_constraint("c1");
+b.add_constraint("c2");
+gossip_exchange(&mut a, &mut b);
+gossip_exchange(&mut b, &mut a);
+// Both nodes now have both constraints
+
+// Deterministic simulation with message loss
+let mut sim = Simulation::new(5, 42).with_loss_rate(0.3);
+for i in 0..5 { sim.add_constraint(i, &format!("c{}", i)); }
+let converged_at = sim.run_until_converged(100);
+assert!(converged_at.is_some());
 ```
 
-## Delta-state CRDTs
+## Benchmarks (Ryzen AI 9 HX 370)
 
-Don't send full state on every heartbeat — send only what changed:
+| Operation | Latency | Throughput |
+|-----------|---------|------------|
+| G-Counter merge | 76 ns | 13.1M ops/s |
+| Full state merge (50+50 constraints) | 12 µs | 82.8K ops/s |
+| Vector clock compare (6 nodes) | 369 ns | 2.7M ops/s |
+| Delta generation | 76 ns | 13.2M ops/s |
 
-```rust
-use constraint_crdt::DeltaTracker;
+## CLI
 
-let mut tracker = DeltaTracker::new();
-let delta = tracker.generate("forgemaster", 150, 5, (2, 1), &["new_constraint"], &[]);
-println!("Wire size: {} bytes", delta.wire_size());
+```bash
+constraint-crdt demo     # Basic CRDT operations
+constraint-crdt fleet    # 4-node gossip simulation
+constraint-crdt bench    # Micro-benchmarks
+constraint-crdt delta    # Delta-state demo
+constraint-crdt vclock   # Vector clock causality
 ```
 
 ## Tests
 
-**65 tests**, all verifying CRDT algebraic laws (commutativity, associativity, idempotence) for every type. Vector clock causality tested across 1-3 node scenarios.
-
-## Features
-
-- `default` — core CRDT types (zero network deps)
-- `plato` — adds `PlatoClient` for HTTP integration with PLATO tile server
+**85 tests** — every CRDT type verified for commutativity, associativity, idempotence. Gossip convergence tested with 2, 3, 5 nodes. Simulation tested with 30% message loss.
 
 ## Origin
 
 Extracted from [SmartCRDT](https://github.com/SuperInstance/SmartCRDT)'s OR-Set, G-Counter, PN-Counter, and Merge trait, specialized for the Cocapn fleet's constraint theory ecosystem.
-
-## Ecosystem
-
-- [constraint-theory-core](https://github.com/SuperInstance/constraint-theory-core) — Rust library (184 tests)
-- [constraint-theory](https://github.com/SuperInstance/constraint-theory) — Python bindings
-- [eisenstein-c](https://github.com/SuperInstance/eisenstein-c) — C library (integer overflow safe)
-- [flux-lucid](https://github.com/SuperInstance/flux-lucid) — Unified constraint theory ecosystem
-- [holonomy-consensus](https://github.com/SuperInstance/holonomy-consensus) — Distributed agreement protocol
 
 ## License
 
