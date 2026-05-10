@@ -2,14 +2,8 @@
 //!
 //! Instead of sending entire CRDT state across the network, send only what changed.
 //! A delta is the minimal state needed to bring another replica up to date.
-//!
-//! This is critical for fleet coordination — nodes exchange small deltas
-//! instead of full constraint state on every heartbeat.
 
-use crate::merge::Merge;
-use crate::counter::ConstraintGCounter;
-use crate::orset::ConstraintORSet;
-use crate::eisenstein::{EisensteinRegister, eisenstein_norm};
+use crate::eisenstein::eisenstein_norm;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -58,7 +52,7 @@ pub struct ConstraintDelta {
     pub node: String,
     /// Monotonic sequence number
     pub seq: u64,
-    /// Counter deltas (satisfied/violation increments)
+    /// Counter deltas
     pub counter: CounterDelta,
     /// Constraint set deltas
     pub constraints: Vec<OrsetDelta>,
@@ -120,7 +114,6 @@ impl DeltaTracker {
     }
 
     /// Generate a delta from a full state snapshot.
-    /// Returns None if nothing changed.
     pub fn generate(
         &mut self,
         node: &str,
@@ -156,7 +149,7 @@ impl DeltaTracker {
         for id in removed {
             constraint_deltas.push(OrsetDelta::Remove {
                 constraint_id: id.clone(),
-                tombstoned_tags: Vec::new(), // Caller should provide if known
+                tombstoned_tags: Vec::new(),
                 seq: new_seq,
             });
         }
@@ -178,18 +171,12 @@ impl DeltaTracker {
             (satisfied, violations, new_seq, Some(position)),
         );
 
-        let delta = ConstraintDelta {
+        ConstraintDelta {
             node: node.to_string(),
             seq: new_seq,
             counter: counter_delta,
             constraints: constraint_deltas,
             position: pos_delta,
-        };
-
-        if delta.is_empty() {
-            delta
-        } else {
-            delta
         }
     }
 
@@ -222,20 +209,17 @@ mod tests {
     #[test]
     fn test_delta_generation() {
         let mut tracker = DeltaTracker::new();
-
-        // First snapshot: everything is new
         let d1 = tracker.generate("node-a", 100, 5, (1, 0), &["c1".into()], &[]);
         assert_eq!(d1.counter.satisfied_delta, 100);
         assert_eq!(d1.counter.violations_delta, 5);
         assert_eq!(d1.constraints.len(), 1);
         assert!(d1.position.is_some());
 
-        // Second snapshot: only deltas since last
         let d2 = tracker.generate("node-a", 150, 8, (1, 0), &["c2".into()], &[]);
         assert_eq!(d2.counter.satisfied_delta, 50);
         assert_eq!(d2.counter.violations_delta, 3);
         assert_eq!(d2.constraints.len(), 1);
-        assert!(d2.position.is_none()); // Position unchanged
+        assert!(d2.position.is_none());
     }
 
     #[test]
@@ -252,7 +236,6 @@ mod tests {
         let d = tracker.generate("node-a", 100, 5, (2, 1), &["c1".into()], &[]);
         let bytes = d.to_bytes();
         assert!(!bytes.is_empty());
-
         let restored = ConstraintDelta::from_bytes(&bytes).unwrap();
         assert_eq!(restored.node, "node-a");
         assert_eq!(restored.counter.satisfied_delta, 100);
@@ -263,8 +246,6 @@ mod tests {
         let mut tracker = DeltaTracker::new();
         tracker.generate("a", 100, 5, (0, 0), &[], &[]);
         tracker.generate("b", 200, 10, (0, 0), &[], &[]);
-
-        // Each node tracks independently
         let da = tracker.generate("a", 120, 5, (0, 0), &[], &[]);
         let db = tracker.generate("b", 200, 15, (0, 0), &[], &[]);
         assert_eq!(da.counter.satisfied_delta, 20);
@@ -276,7 +257,7 @@ mod tests {
     fn test_wire_size() {
         let d = ConstraintDelta::empty("node-a", 1);
         assert!(d.wire_size() > 0);
-        assert!(d.wire_size() < 200); // Empty delta should be small
+        assert!(d.wire_size() < 200);
     }
 
     #[test]

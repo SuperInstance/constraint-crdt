@@ -130,7 +130,7 @@ impl VectorClock {
 impl fmt::Display for VectorClock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut entries: Vec<_> = self.clock.iter().collect();
-        entries.sort_by_key(|(k, _)| k.clone());
+        entries.sort_by_key(|(k, _)| *k);
         write!(f, "VC{{")?;
         for (i, (node, time)) in entries.iter().enumerate() {
             if i > 0 { write!(f, ", ")?; }
