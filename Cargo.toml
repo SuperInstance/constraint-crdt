@@ -22,3 +22,7 @@ features = ["blocking", "json"]
 optional = true
 
 [dev-dependencies]
+
+[[bin]]
+name = "constraint-crdt"
+path = "src/main.rs"
