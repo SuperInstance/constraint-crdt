@@ -13,24 +13,46 @@
 //! Constraint satisfaction requires closure under lattice operations.
 //! These are THE SAME algebraic structure — a semilattice.
 //!
-//! ## What this gives us
+//! ## What you get
 //!
-//! - `ConstraintState` — a CRDT that tracks which constraints are satisfied
-//! - `ConstraintGCounter` — distributed count of satisfied/violated constraints
-//! - `ConstraintORSet` — set of applied constraints with conflict-free removal
-//! - `EisensteinState` — Eisenstein integer positions as CRDT registers
-//! - `FleetTile` — PLATO tile as a CRDT that merges across nodes
+//! - `Merge` — the semilattice join trait
+//! - `ConstraintState` — composite CRDT combining all sub-CRDTs
+//! - `ConstraintGCounter` — distributed satisfaction counting
+//! - `PNCounter` — positive/negative counting (decrement support)
+//! - `ConstraintORSet` — add-wins constraint tracking with tombstone GC
+//! - `EisensteinRegister` — lattice positions as LWW registers
+//! - `FleetTile` — PLATO tiles as mergeable CRDTs
+//! - `VectorClock` — causal ordering across nodes
+//! - `DeltaTracker` / `ConstraintDelta` — send only changes, not full state
+//! - `PlatoClient` — HTTP client for PLATO tile server
+//!
+//! ## Algebraic laws verified
+//!
+//! Every CRDT type is tested for:
+//! - **Commutativity**: `a ∘ b == b ∘ a`
+//! - **Associativity**: `(a ∘ b) ∘ c == a ∘ (b ∘ c)`
+//! - **Idempotence**: `a ∘ a == a`
 
 pub mod merge;
 pub mod state;
 pub mod counter;
+pub mod pncounter;
 pub mod orset;
 pub mod eisenstein;
 pub mod tile;
+pub mod vclock;
+pub mod delta;
+#[cfg(feature = "plato")]
+pub mod plato;
 
 pub use merge::Merge;
 pub use state::ConstraintState;
 pub use counter::ConstraintGCounter;
+pub use pncounter::PNCounter;
 pub use orset::ConstraintORSet;
 pub use eisenstein::EisensteinRegister;
 pub use tile::FleetTile;
+pub use vclock::VectorClock;
+pub use delta::{ConstraintDelta, DeltaTracker};
+#[cfg(feature = "plato")]
+pub use plato::PlatoClient;

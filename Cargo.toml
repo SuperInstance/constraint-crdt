@@ -1,14 +1,24 @@
 [package]
 name = "constraint-crdt"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "CRDT-backed constraint states for distributed fleet consensus"
 license = "MIT"
 repository = "https://github.com/SuperInstance/constraint-crdt"
+keywords = ["crdt", "constraint", "distributed", "consensus", "fleet"]
+categories = ["data-structures", "concurrency"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[features]
+default = []
+plato = ["reqwest"]
+
+[dependencies.reqwest]
+version = "0.12"
+features = ["blocking", "json"]
+optional = true
+
 [dev-dependencies]
-criterion = "0.5"
